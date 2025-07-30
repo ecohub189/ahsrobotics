@@ -1,0 +1,780 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AHS Robotics | Ashland High School's VEX Robotics Team</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom CSS for animations and effects */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+        
+        .delay-1 { animation-delay: 0.2s; }
+        .delay-2 { animation-delay: 0.4s; }
+        .delay-3 { animation-delay: 0.6s; }
+        
+        .gradient-text {
+            background: linear-gradient(90deg, #1e40af, #3b82f6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .robot-icon {
+            transition: transform 0.3s ease;
+        }
+        
+        .robot-icon:hover {
+            transform: rotate(15deg);
+        }
+        
+        #membersOnlyModal {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        
+        .modal-hidden {
+            opacity: 0;
+            transform: scale(0.9);
+            pointer-events: none;
+        }
+        
+        .modal-visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .error {
+            color: #dc2626;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <i class="fas fa-robot text-blue-600 text-2xl mr-2"></i>
+                        <span class="text-xl font-bold text-gray-900">AHS Robotics</span>
+                    </div>
+                </div>
+                <div class="hidden md:ml-6 md:flex md:items-center md:space-x-8">
+                    <a href="#home" class="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Home</a>
+                    <a href="#about" class="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">About</a>
+                    <a href="#blog" class="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Blog</a>
+                    <a href="#events" class="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Events</a>
+                    <a href="#contact" class="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Contact</a>
+                    <button onclick="showMembersModal()" class="bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                        Members Only
+                    </button>
+                </div>
+                <div class="-mr-2 flex items-center md:hidden">
+                    <button type="button" id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none">
+                        <span class="sr-only">Open main menu</span>
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile menu -->
+        <div class="hidden md:hidden" id="mobile-menu">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white">
+                <a href="#home" class="text-gray-900 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium">Home</a>
+                <a href="#about" class="text-gray-900 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium">About</a>
+                <a href="#blog" class="text-gray-900 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium">Blog</a>
+                <a href="#events" class="text-gray-900 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium">Events</a>
+                <a href="#contact" class="text-gray-900 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium">Contact</a>
+                <button onclick="showMembersModal()" class="w-full text-left bg-yellow-400 hover:bg-yellow-500 text-gray-900 block px-3 py-2 rounded-md text-base font-medium">
+                    Members Only
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="relative bg-gradient-to-r from-blue-800 to-blue-600 text-white py-20 md:py-32">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-10 md:mb-0 fade-in">
+                    <h1 class="text-4xl md:text-5xl font-bold mb-4">Building the Future at <span class="gradient-text">Ashland High</span></h1>
+                    <p class="text-xl mb-8 opacity-90">We're AHS Robotics - a passionate team of students diving into our first year of VEX Robotics competition. Innovation, teamwork, and a whole lot of fun.</p>
+                    <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                        <a href="#contact" class="bg-white text-blue-600 hover:bg-gray-100 px-6 py-3 rounded-lg font-medium text-center transition-colors">
+                            Join Our Team
+                        </a>
+                        <a href="#" class="bg-transparent border-2 border-white hover:bg-white hover:bg-opacity-10 px-6 py-3 rounded-lg font-medium text-center transition-colors">
+                            Support Us
+                        </a>
+                    </div>
+                </div>
+                <div class="md:w-1/2 flex justify-center fade-in delay-1">
+                    <div class="relative">
+                        <i class="fas fa-robot text-8xl md:text-9xl text-white opacity-20 absolute -top-6 -left-6 transform rotate-12"></i>
+                        <i class="fas fa-robot text-8xl md:text-9xl text-white opacity-20 absolute -bottom-6 -right-6 transform -rotate-12"></i>
+                        <img src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="AHS Robotics Team working on VEX robot" class="relative rounded-lg shadow-2xl border-4 border-white w-full max-w-md">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-gray-50 to-transparent"></div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 fade-in">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Who We Are</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">A group of Ashland High students passionate about robotics, engineering, and problem-solving. We're just starting our VEX journey but we're ambitious and ready to learn.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+                <div class="bg-gray-50 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow fade-in delay-1">
+                    <div class="text-blue-600 text-4xl mb-4">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Our Mission</h3>
+                    <p class="text-gray-600">To foster STEM skills through hands-on robotics while building teamwork, problem-solving abilities, and competitive spirit.</p>
+                </div>
+                
+                <div class="bg-gray-50 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow fade-in delay-1">
+                    <div class="text-blue-600 text-4xl mb-4">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">VEX Robotics</h3>
+                    <p class="text-gray-600">We're competing in VEX Robotics competitions, designing and building robots to complete specific challenges.</p>
+                </div>
+                
+                <div class="bg-gray-50 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow fade-in delay-2">
+                    <div class="text-blue-600 text-4xl mb-4">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Team Culture</h3>
+                    <p class="text-gray-600">We value collaboration, creativity, and continuous learning. Everyone contributes and everyone grows.</p>
+                </div>
+                
+                <div class="bg-gray-50 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow fade-in delay-2">
+                    <div class="text-blue-600 text-4xl mb-4">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Location</h3>
+                    <p class="text-gray-600">Based at Ashland High School, 65 E Union St, Ashland, MA 01721. Meetings after school in the STEM lab.</p>
+                </div>
+            </div>
+            
+            <div class="fade-in delay-3">
+                <h3 class="text-2xl font-bold text-center mb-8">Meet Our Leadership Team</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Team Member 1 -->
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow text-center">
+                        <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-3xl">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h4 class="font-bold text-lg">Mihir Jain</h4>
+                        <p class="text-blue-600 mb-2">President</p>
+                        <p class="text-gray-600 text-sm">Leads the team and ensures we stay on track with our goals.</p>
+                    </div>
+                    
+                    <!-- Team Member 2 -->
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow text-center">
+                        <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-3xl">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h4 class="font-bold text-lg">Nicholas Novak</h4>
+                        <p class="text-blue-600 mb-2">Vice President</p>
+                        <p class="text-gray-600 text-sm">Supports the president and coordinates team activities.</p>
+                    </div>
+                    
+                    <!-- Team Member 3 -->
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow text-center">
+                        <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-3xl">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <h4 class="font-bold text-lg">Shlok Tanna</h4>
+                        <p class="text-blue-600 mb-2">Coding Lead</p>
+                        <p class="text-gray-600 text-sm">Leads software development for our robots.</p>
+                    </div>
+                    
+                    <!-- Team Member 4 -->
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow text-center">
+                        <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-3xl">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                        <h4 class="font-bold text-lg">Tanay Apte</h4>
+                        <p class="text-blue-600 mb-2">Hardware Lead</p>
+                        <p class="text-gray-600 text-sm">Oversees mechanical design and construction.</p>
+                    </div>
+                    
+                    <!-- Team Member 5 -->
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow text-center">
+                        <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-3xl">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <h4 class="font-bold text-lg">Yash Ahuja</h4>
+                        <p class="text-blue-600 mb-2">Secretary</p>
+                        <p class="text-gray-600 text-sm">Manages documentation and team records.</p>
+                    </div>
+                    
+                    <!-- Team Member 6 -->
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow text-center">
+                        <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-3xl">
+                            <i class="fas fa-bullhorn"></i>
+                        </div>
+                        <h4 class="font-bold text-lg">Riya Dubey</h4>
+                        <p class="text-blue-600 mb-2">PR</p>
+                        <p class="text-gray-600 text-sm">Handles publicity and community relations.</p>
+                    </div>
+                    
+                    <!-- Team Member 7 -->
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow text-center">
+                        <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-3xl">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <h4 class="font-bold text-lg">Dhruv Suresh</h4>
+                        <p class="text-blue-600 mb-2">Treasurer</p>
+                        <p class="text-gray-600 text-sm">Manages team finances and fundraising.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Blog Section -->
+    <section id="blog" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 fade-in">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Latest Updates</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">Follow our journey through competition season, build progress, and team milestones.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Blog Post 1 -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow fade-in delay-1">
+                    <div class="h-48 bg-blue-600 flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-6xl"></i>
+                    </div>
+                    <div class="p-6">
+                        <div class="text-sm text-gray-500 mb-2">June 15, 2025</div>
+                        <h3 class="text-xl font-bold mb-2">Team Formation Complete</h3>
+                        <p class="text-gray-600 mb-4">We've finalized our leadership team and are excited to begin our season in VEX Robotics!</p>
+                        <a href="#" class="text-blue-600 font-medium hover:text-blue-800">Read more →</a>
+                    </div>
+                </div>
+                
+                <!-- Blog Post 2 -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow fade-in delay-2">
+                    <div class="h-48 bg-blue-700 flex items-center justify-center">
+                        <i class="fas fa-tools text-white text-6xl"></i>
+                    </div>
+                    <div class="p-6">
+                        <div class="text-sm text-gray-500 mb-2">July 2, 2025</div>
+                        <h3 class="text-xl font-bold mb-2">First Build Session</h3>
+                        <p class="text-gray-600 mb-4">Our hardware team had their first hands-on session with the VEX parts kit. Lots of learning happening!</p>
+                        <a href="#" class="text-blue-600 font-medium hover:text-blue-800">Read more →</a>
+                    </div>
+                </div>
+                
+                <!-- Blog Post 3 -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow fade-in delay-3">
+                    <div class="h-48 bg-blue-800 flex items-center justify-center">
+                        <i class="fas fa-lightbulb text-white text-6xl"></i>
+                    </div>
+                    <div class="p-6">
+                        <div class="text-sm text-gray-500 mb-2">July 10, 2025</div>
+                        <h3 class="text-xl font-bold mb-2">Design Brainstorming</h3>
+                        <p class="text-gray-600 mb-4">The team spent an afternoon whiteboarding potential robot designs for this year's VEX challenge.</p>
+                        <a href="#" class="text-blue-600 font-medium hover:text-blue-800">Read more →</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-12 fade-in delay-3">
+                <a href="#" class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                    View All Posts
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Events Section -->
+    <section id="events" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 fade-in">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Upcoming Events</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">Mark your calendars for our team meetings, build sessions, and competitions.</p>
+            </div>
+            
+            <div class="max-w-3xl mx-auto">
+                <!-- Event 1 -->
+                <div class="flex flex-col md:flex-row mb-8 p-6 bg-gray-50 rounded-xl hover:shadow-md transition-shadow fade-in delay-1">
+                    <div class="md:w-1/4 mb-4 md:mb-0">
+                        <div class="bg-blue-600 text-white text-center py-2 px-4 rounded-lg">
+                            <div class="text-2xl font-bold">15</div>
+                            <div class="text-sm">August</div>
+                        </div>
+                    </div>
+                    <div class="md:w-3/4">
+                        <h3 class="text-xl font-bold mb-2">Weekly Team Meeting</h3>
+                        <p class="text-gray-600 mb-2">3:30 PM - 5:00 PM @ Ashland High STEM Lab</p>
+                        <p class="text-gray-600">Regular team meeting to discuss progress, assign tasks, and plan for the week ahead.</p>
+                    </div>
+                </div>
+                
+                <!-- Event 2 -->
+                <div class="flex flex-col md:flex-row mb-8 p-6 bg-gray-50 rounded-xl hover:shadow-md transition-shadow fade-in delay-2">
+                    <div class="md:w-1/4 mb-4 md:mb-0">
+                        <div class="bg-blue-600 text-white text-center py-2 px-4 rounded-lg">
+                            <div class="text-2xl font-bold">22</div>
+                            <div class="text-sm">August</div>
+                        </div>
+                    </div>
+                    <div class="md:w-3/4">
+                        <h3 class="text-xl font-bold mb-2">Build Session</h3>
+                        <p class="text-gray-600 mb-2">3:30 PM - 6:00 PM @ Ashland High STEM Lab</p>
+                        <p class="text-gray-600">Extended build session to work on our competition robot prototype.</p>
+                    </div>
+                </div>
+                
+                <!-- Event 3 -->
+                <div class="flex flex-col md:flex-row mb-8 p-6 bg-gray-50 rounded-xl hover:shadow-md transition-shadow fade-in delay-3">
+                    <div class="md:w-1/4 mb-4 md:mb-0">
+                        <div class="bg-blue-600 text-white text-center py-2 px-4 rounded-lg">
+                            <div class="text-2xl font-bold">5</div>
+                            <div class="text-sm">September</div>
+                        </div>
+                    </div>
+                    <div class="md:w-3/4">
+                        <h3 class="text-xl font-bold mb-2">VEX Workshop</h3>
+                        <p class="text-gray-600 mb-2">All day @ Boston University</p>
+                        <p class="text-gray-600">Attending a VEX Robotics workshop to learn from experienced teams and mentors.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-12 fade-in delay-3">
+                <a href="#" class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                    Full Calendar
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 fade-in">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Get In Touch</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">Interested in joining, sponsoring, or just learning more? We'd love to hear from you.</p>
+            </div>
+            
+            <div class="flex flex-col lg:flex-row gap-12">
+                <div class="lg:w-1/2 fade-in delay-1">
+                    <form id="contactForm" action="mailto:ahsrobotics@ashland.k12.ma.us" method="POST" enctype="text/plain" class="bg-white p-8 rounded-xl shadow-md">
+                        <div class="mb-6">
+                            <label for="name" class="block text-gray-700 font-medium mb-2">Name</label>
+                            <input type="text" id="name" name="name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            <p id="nameError" class="error">Please enter your name.</p>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label for="email" class="block text-gray-700 font-medium mb-2">Email</label>
+                            <input type="email" id="email" name="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            <p id="emailError" class="error">Please enter a valid email address.</p>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label for="subject" class="block text-gray-700 font-medium mb-2">Subject</label>
+                            <select id="subject" name="subject" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                <option value="">Select a topic</option>
+                                <option value="Joining the team">Joining the team</option>
+                                <option value="Sponsorship">Sponsorship</option>
+                                <option value="General question">General question</option>
+                                <option value="Media inquiry">Media inquiry</option>
+                            </select>
+                            <p id="subjectError" class="error">Please select a subject.</p>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label for="message" class="block text-gray-700 font-medium mb-2">Message</label>
+                            <textarea id="message" name="message" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required></textarea>
+                            <p id="messageError" class="error">Please enter a message.</p>
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition-colors">
+                            Send Message
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="lg:w-1/2 fade-in delay-2">
+                    <div class="bg-white p-8 rounded-xl shadow-md h-full">
+                        <h3 class="text-xl font-bold mb-6">Contact Information</h3>
+                        
+                        <div class="space-y-6">
+                            <div class="flex items-start">
+                                <div class="text-blue-600 text-xl mr-4 mt-1">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium text-gray-900">Email</h4>
+                                    <p class="text-gray-600">ahsrobotics@ashland.k12.ma.us</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="text-blue-600 text-xl mr-4 mt-1">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium text-gray-900">Address</h4>
+                                    <p class="text-gray-600">Ashland High School<br>65 E Union St<br>Ashland, MA 01721</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="text-blue-600 text-xl mr-4 mt-1">
+                                    <i class="fab fa-instagram"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium text-gray-900">Instagram</h4>
+                                    <p class="text-gray-600">Follow us <a href="#" class="text-blue-600 hover:underline">@ahsrobotics</a> for updates</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="text-blue-600 text-xl mr-4 mt-1">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium text-gray-900">Meeting Times</h4>
+                                    <p class="text-gray-600">Tuesdays & Thursdays<br>3:30 PM - 5:00 PM</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-10">
+                            <h4 class="font-medium text-gray-900 mb-4">Support Our Team</h4>
+                            <p class="text-gray-600 mb-4">As a new team, we rely on community support to fund our competitions and equipment.</p>
+                            <button class="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg font-medium transition-colors">
+                                Donate Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Members Only Modal -->
+    <div id="membersOnlyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 modal-hidden">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 relative">
+            <button onclick="hideMembersModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div id="passwordForm">
+                <h3 class="text-2xl font-bold mb-4">Members Only Area</h3>
+                <p class="text-gray-600 mb-6">Please enter the password to access team resources.</p>
+                
+                <div class="mb-4">
+                    <input type="password" id="membersPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter password">
+                    <p id="passwordError" class="text-red-500 text-sm mt-1 hidden">Incorrect password. Please try again.</p>
+                </div>
+                
+                <button onclick="checkPassword()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition-colors">
+                    Enter
+                </button>
+            </div>
+            
+            <div id="membersContent" class="hidden">
+                <h3 class="text-2xl font-bold mb-4">Team Resources</h3>
+                
+                <div class="space-y-4">
+                    <a href="#" class="block p-4 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        <div class="flex items-center">
+                            <div class="text-blue-600 text-xl mr-4">
+                                <i class="fab fa-google-drive"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium">AHS Robotics Google Drive</h4>
+                                <p class="text-sm text-gray-600">Team documents, schematics, and resources</p>
+                            </div>
+                        </div>
+                    </a>
+                    
+                    <a href="#" class="block p-4 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        <div class="flex items-center">
+                            <div class="text-blue-600 text-xl mr-4">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium">Meeting Notes</h4>
+                                <p class="text-sm text-gray-600">Archive of all team meeting minutes</p>
+                            </div>
+                        </div>
+                    </a>
+                    
+                    <a href="#" class="block p-4 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        <div class="flex items-center">
+                            <div class="text-blue-600 text-xl mr-4">
+                                <i class="fas fa-bell"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium">Internal Updates</h4>
+                                <p class="text-sm text-gray-600">Team announcements and schedule changes</p>
+                            </div>
+                        </div>
+                    </a>
+                    
+                    <a href="#" class="block p-4 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        <div class="flex items-center">
+                            <div class="text-blue-600 text-xl mr-4">
+                                <i class="fas fa-tasks"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium">Task Assignments</h4>
+                                <p class="text-sm text-gray-600">Current responsibilities and deadlines</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-lg font-bold mb-4">AHS Robotics</h3>
+                    <p class="text-gray-400">Ashland High School's VEX Robotics team. Building, coding, and competing with passion.</p>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-bold mb-4">Quick Links</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#home" class="text-gray-400 hover:text-white transition-colors">Home</a></li>
+                        <li><a href="#about" class="text-gray-400 hover:text-white transition-colors">About</a></li>
+                        <li><a href="#blog" class="text-gray-400 hover:text-white transition-colors">Blog</a></li>
+                        <li><a href="#events" class="text-gray-400 hover:text-white transition-colors">Events</a></li>
+                        <li><a href="#contact" class="text-gray-400 hover:text-white transition-colors">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-bold mb-4">Resources</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">VEX Robotics</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">STEM Resources</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Competition Rules</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Learning Materials</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-bold mb-4">Connect</h3>
+                    <div class="flex space-x-4 mb-4">
+                        <a href="#" class="text-gray-400 hover:text-white text-xl transition-colors">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white text-xl transition-colors">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white text-xl transition-colors">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white text-xl transition-colors">
+                            <i class="fab fa-github"></i>
+                        </a>
+                    </div>
+                    <p class="text-gray-400">Email: ashalnd.k12.ma.us</p>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 mt-10 pt-6 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-400 text-sm">© 2025 AHS Robotics. All rights reserved.</p>
+                <p class="text-gray-400 text-sm mt-4 md:mt-0">Ashland High School, 65 E Union St, Ashland, MA 01721</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+        
+        // Members only modal
+        function showMembersModal() {
+            document.getElementById('membersOnlyModal').classList.remove('modal-hidden');
+            document.getElementById('membersOnlyModal').classList.add('modal-visible');
+        }
+        
+        function hideMembersModal() {
+            document.getElementById('membersOnlyModal').classList.remove('modal-visible');
+            document.getElementById('membersOnlyModal').classList.add('modal-hidden');
+            // Reset the modal state
+            document.getElementById('passwordForm').classList.remove('hidden');
+            document.getElementById('membersContent').classList.add('hidden');
+            document.getElementById('membersPassword').value = '';
+            document.getElementById('passwordError').classList.add('hidden');
+        }
+        
+        function checkPassword() {
+            const password = document.getElementById('membersPassword').value;
+            const errorElement = document.getElementById('passwordError');
+            
+            if (password === 'yellow') {
+                document.getElementById('passwordForm').classList.add('hidden');
+                document.getElementById('membersContent').classList.remove('hidden');
+                errorElement.classList.add('hidden');
+            } else {
+                errorElement.classList.remove('hidden');
+            }
+        }
+        
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                    
+                    // Close mobile menu if open
+                    if (!mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.add('hidden');
+                    }
+                }
+            });
+        });
+        
+        // Add fade-in animation to elements when they come into view
+        const fadeElements = document.querySelectorAll('.fade-in');
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = 1;
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+        
+        fadeElements.forEach(element => {
+            element.style.opacity = 0;
+            element.style.transform = 'translateY(20px)';
+            observer.observe(element);
+        });
+
+        // Form validation
+        document.getElementById('contactForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const subject = document.getElementById('subject').value;
+            const message = document.getElementById('message').value.trim();
+            
+            const nameError = document.getElementById('nameError');
+            const emailError = document.getElementById('emailError');
+            const subjectError = document.getElementById('subjectError');
+            const messageError = document.getElementById('messageError');
+            
+            let isValid = true;
+            
+            // Reset error messages
+            nameError.style.display = 'none';
+            emailError.style.display = 'none';
+            subjectError.style.display = 'none';
+            messageError.style.display = 'none';
+            
+            // Validate fields
+            if (!name) {
+                nameError.style.display = 'block';
+                isValid = false;
+            }
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                emailError.style.display = 'block';
+                emailError.textContent = 'Please enter a valid email address.';
+                isValid = false;
+            }
+            if (!subject) {
+                subjectError.style.display = 'block';
+                isValid = false;
+            }
+            if (!message) {
+                messageError.style.display = 'block';
+                isValid = false;
+            }
+            
+            if (isValid) {
+                // Format the email body
+                const form = e.target;
+                form.submit();
+            }
+        });
+    </script>
+</body>
+</html>
